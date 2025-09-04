@@ -1,0 +1,13 @@
+export const API_URL = process.env.REACT_APP_API_URL
+export const BASE_URL = process.env.REACT_BASE_API_URL
+
+export const AWE_ADDRESS = '0x1b4617734c43f6159f3a70b7e06d883647512778'
+export const CONTRIBUTE_ADDRESS = "0x35130523497c3239bCA831Cc7607B0f79C87f1ee"
+export const TIPPING_ADDRESS = "0xff9c3C9FBD22De9d13023601F51a5c9265E14d5A"
+export const ENGAGE_ADDRESS = '0xdc973e548144266c3777081ba6921d6a7861dc1a'
+export const CHAT_AGENT_ADDRESS = '0x08FFcE27a9Bfc60899B0fa9a1D20D99C68AFb0b1'
+
+export const COLORS_ARR = [
+  '#6ed6e9', '#ffa94d', '#d6df4e', '#519D9E', '#D1B6E1', '#8FBC94', '#54A687', '#56445D',
+  '#6ed6e9', '#ffa94d', '#d6df4e', '#519D9E', '#D1B6E1', '#8FBC94', '#54A687', '#56445D'
+]

@@ -1,0 +1,50 @@
+.bar{
+  position: relative;
+  height: 21px;
+}
+.bar::before{
+  position: absolute;
+  top:50%;
+  left: calc(50% - 40px);
+  content: '';
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 0;
+  border-top: 1px dashed #fff;
+}
+.bar::after{
+  position: absolute;
+  top:50%;
+  left: calc(50% + 40px);
+  content: '';
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 0;
+  border-top: 1px dashed #fff;
+}
+.vBar{
+  position: relative;
+}
+.vBar::before{
+  position: absolute;
+  left:50%;
+  top: calc(50% - 40px);
+  content: '';
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 52px;
+  background-image: linear-gradient(to bottom, #333 50%, transparent 50%);
+  border-left: 1px dashed #fff;
+}
+.vBar::after{
+  position: absolute;
+  left:50%;
+  top: calc(50% + 40px);
+  content: '';
+  transform: translate(-50%, -50%);
+  width: 0;
+  background-image: linear-gradient(to right, #333 50%, transparent 50%);
+
+  height: 52px;
+  border-left: 1px dashed #fff;
+}

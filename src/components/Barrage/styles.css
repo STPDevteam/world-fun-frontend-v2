@@ -1,0 +1,31 @@
+.barrageItem:hover{
+    box-shadow: 0px 4px 24px 0px #FFB6578C;
+}
+.barrageItem{
+    display: flex;
+    cursor: pointer;
+    backdrop-filter: blur(54px);
+    align-items: center;
+    justify-content: flex-start;
+    padding: 15px;
+    line-height: 1.1;
+    padding-right: 70px!important;
+    border-radius: 60px;
+    max-width: fit-content;
+}
+.barrage-text {
+    max-width: 480px;
+    line-height: 1.5;
+    /* white-space: pre-line; Support line breaks inserted by JavaScript */
+    color: #fff; /* Keep white text */
+    font-size: 14px; /* Ensure consistent font size */
+    font-family: 'Office Times Round';
+}
+.bullet-item{
+    pointer-events:all!important;
+    padding: 20px;
+    display: inline-block;
+}
+.danmaku-container{
+    overflow: visible!important
+}

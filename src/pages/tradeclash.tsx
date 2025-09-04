@@ -1,0 +1,1204 @@
+'use client';
+import { useEffect, useState, useCallback, use } from 'react'
+import Link from 'next/link';
+import { readContracts, waitForTransactionReceipt } from '@wagmi/core'
+import { useAccount, useWriteContract } from 'wagmi'
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { toaster } from "@/components/ui/toaster"
+import { formatUnits, parseUnits } from "ethers";
+import numeral from 'numeral'
+import { Box, Heading, Text, Grid, GridItem, Image, Flex, Button, Progress, Stack, Status, Tabs, Icon, Field, NumberInput, Input, Group, HStack, useBreakpointValue } from '@chakra-ui/react';
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Header } from '@/components/Header';
+import { Sidebar } from '@/components/Sidebar';
+import { useColorModeValue } from "@/components/ui/color-mode"
+import { FaRegCheckCircle } from "react-icons/fa";
+import { PiWarningCircle } from "react-icons/pi";
+import { TradeClashABI } from '@/constants/abi/TradeClash';
+import { ERC20_ABI } from '@/constants/abi/ERC20';
+import { config } from '@/config/rainbow.config';
+import OurTeam from '@/components/OurTeam';
+import TradeOverview from '@/components/TradeOverview';
+import { useWorldData } from '@/hooks';
+import ChartSchedule from '@/components/ChartSchedule';
+import ChartOverview from '@/components/ChartOverview';   
+import { abbrTxHash,copyToClipboard,formatNumber } from '@/utils';
+import moment from 'moment';
+
+const team = [
+  {
+    name: 'Seroto Labs',
+    role: 'Will - Founder & CEO',
+    avatar: '/team_tradeclash.jpg',
+    twitter: 'https://x.com/Wemerging',
+    desc: `- 10+ years in Product & Design shipping consumer products to 30M+ of users\n- Full stack engineering and content production experience specializing in consumer AI, social platforms, and fintech\n- Helped raise $300M+ across ventures`,
+  },
+]
+
+export default function WorldPage() {
+  const id = 'tradeclash';
+  const bgColor = useColorModeValue('white', 'black');
+  const color = useColorModeValue('black', 'white');
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const [refresh, setRefresh] = useState<number>(1);
+  const [contributionsAmount, setContributionsAmount] = useState('')
+  const [usdcBalance, setUSDCBalance] = useState('')
+  const [amountToApprove, setAmountToApprove] = useState('')
+  const [maxAmountPerAddress, setMaxAmountPerAddress] = useState('')
+  const [fundingGoal, setFundingGoal] = useState('')
+  const [totalRaised, setTotalRaised] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [usdcAddress, setUSDCAddress] = useState('')
+  const [claimAddress, setClaimAddress] = useState('')
+  const [poolAddress, setPoolAddress] = useState('')
+  const [claimTokenSymbol, setClaimTokenSymbol] = useState('')
+  const [estimateAmount, setEstimateAmount] = useState('')
+  const [hasClaimed, setHasClaimed] = useState(false)
+  const [inWhiteList, setInWhiteList] = useState(true)
+  const [onlyWhitelist, setOnlyWhiteList] = useState(false)
+  const [activeTab, setActiveTab] = useState('team');
+  const [amount, setAmount] = useState<string>('');
+  const [remainingTime, setRemainingTime] = useState<string>('');
+  const [isTradable, setIsTradable] = useState<boolean>(true);
+  const [canClaim, setCanClaim] = useState<boolean>(false);
+  const [contributeLoading, setContributeLoading] = useState<boolean>(false);
+  const [claimLoading, setClaimLoading] = useState<boolean>(false);
+  const [approveLoading, setApproveLoading] = useState<boolean>(false);
+  const { writeContract } = useWriteContract()
+  const worldData = useWorldData(address, id, refresh)
+  const {
+    control,
+    setValue,
+    getValues,
+    handleSubmit,
+    formState: { errors },
+  } = useForm()
+  const worldInfo = {
+    'tradeclash': {
+      'id': 'tradeclash',
+      'name': 'Trade Clash',
+      // 'logo': '/logo_shark.svg',
+      // 'description': 'AI Shark Tank is a platform for AI projects to raise funds from the community.',
+      'token': '0x1599ff2332806b12964a1594ab77ac4eb9765c9d',
+      'type': 'On-Chain',
+      'x': 'https://x.com/TradeClashAI',
+      'doc': '',
+      'status':'Acitve'
+    }
+  }
+
+  const [mobileTab, setMobileTab] = useState<'info' | 'fundraise'>('info')
+  const isMobile = useBreakpointValue({ base: true, md: false });
+
+  const handleReadContracts = useCallback(async () => {
+    if (worldData.launch_contract) {
+      const World_Fun_Contract: any = {
+        address: worldData.launch_contract,
+        abi: TradeClashABI,
+      }
+      const result: any = await readContracts(config, {
+        contracts: [
+          {
+            ...World_Fun_Contract,
+            functionName: 'contributions',
+            args: [address],
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'maxPerAddress',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'fundingGoal',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'totalRaised',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'endTime',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'startTime',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'usdc',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'canClaim',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'getClaimableAmount',
+            args: [address]
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'claimToken',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'hasClaimed',
+            args: [address]
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'onlyWhitelist',
+            args: []
+          },
+          {
+            ...World_Fun_Contract,
+            functionName: 'whitelist',
+            args: [address]
+          },
+        ],
+      })
+      if (result[0] && result[0]?.status === 'success') {
+        setContributionsAmount(formatUnits(result[0].result, 6))
+      }
+      if (result[1] && result[1]?.status === 'success') {
+        setMaxAmountPerAddress(formatUnits(result[1].result, 6))
+      }
+      if (result[2] && result[2]?.status === 'success') {
+        setFundingGoal(formatUnits(result[2].result, 6))
+      }
+      if (result[3] && result[3]?.status === 'success') {
+        setTotalRaised(formatUnits(result[3].result, 6))
+      }
+      if (result[4] && result[4]?.status === 'success') {
+        setEndTime(formatUnits(result[4].result, 0))
+      }
+      if (result[5] && result[5]?.status === 'success') {
+        setStartTime(formatUnits(result[5].result, 0))
+      }
+      if (result[6] && result[6]?.status === 'success') {
+        setUSDCAddress(result[6].result)
+      }
+      if (result[7] && result[7]?.status === 'success') {
+        setCanClaim(result[7].result)
+      }
+      if (result[8] && result[8]?.status === 'success') {
+        setEstimateAmount(formatUnits(result[8].result, 18))
+      }
+      if (result[9] && result[9]?.status === 'success') {
+        setClaimAddress(result[9].result)
+      }
+      if (result[10] && result[10]?.status === 'success') {
+        setHasClaimed(result[10].result)
+      }
+      if (result[11] && result[11]?.status === 'success') {
+        setOnlyWhiteList(result[11].result)
+      }
+      if (result[12] && result[12]?.status === 'success') {
+        setInWhiteList(result[12].result)
+      }
+    }
+  }, [address, worldData?.launch_contract])
+
+  useEffect(() => {
+    if (worldData?.pool_address) {
+      setPoolAddress(worldData.pool_address)
+    }
+  }, [worldData?.pool_address])
+
+  const handleReadERCContracts = useCallback(async () => {
+    if (usdcAddress) {
+      const AWE_ERC20Contract: any = {
+        address: usdcAddress,
+        abi: ERC20_ABI,
+      }
+      const result: any = await readContracts(config, {
+        contracts: [
+          {
+            ...AWE_ERC20Contract,
+            functionName: 'balanceOf',
+            args: [address]
+          },
+          {
+            ...AWE_ERC20Contract,
+            functionName: 'allowance',
+            args: [address, worldData.launch_contract]
+          }
+        ],
+      })
+      if (result[0] && result[0]?.status === 'success') {
+        setUSDCBalance(formatUnits(result[0].result, 6))
+      }
+      if (result[1] && result[1]?.status === 'success') {
+        setAmountToApprove(formatUnits(result[1].result, 6))
+      }
+    }
+  }, [address, usdcAddress])
+
+  const handleReadERCContracts2 = useCallback(async () => {
+    if (claimAddress) {
+      const AWE_ERC20Contract: any = {
+        address: claimAddress,
+        abi: ERC20_ABI,
+      }
+      const result: any = await readContracts(config, {
+        contracts: [
+          {
+            ...AWE_ERC20Contract,
+            functionName: 'symbol',
+            args: []
+          }
+        ],
+      })
+      if (result[0] && result[0]?.status === 'success') {
+        setClaimTokenSymbol(result[0].result)
+      }
+    }
+  }, [address, claimAddress])
+
+  useEffect(() => {
+    handleReadContracts()
+  }, [address, refresh, worldData.launch_contract, handleReadContracts])
+
+  useEffect(() => {
+    handleReadERCContracts()
+  }, [address, refresh, usdcAddress, handleReadERCContracts])
+
+  useEffect(() => {
+    handleReadERCContracts2()
+  }, [refresh, claimAddress, handleReadERCContracts])
+
+  useEffect(() => {
+    if (endTime && startTime) {
+      setInterval(() => {
+        const now = new Date().getTime();
+        let left: number = Number(startTime)*1000;
+        if(now < Number(startTime)*1000) {
+            left = Number(startTime)*1000;
+            setIsTradable(false)
+        }
+        if(now > Number(startTime)*1000 && now < Number(endTime)*1000) {
+            left = Number(endTime)*1000;
+            setIsTradable(true)
+        }
+        if(now > Number(endTime)*1000) {
+            setRemainingTime('')
+            setIsTradable(false)
+            return;
+        }
+
+        const distance = Number(left) - now;
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        setRemainingTime(`${days} d ${hours} h ${minutes} m ${seconds} s`)
+      }, 1000)
+    }
+  }, [endTime, startTime])
+
+  const handleRefresh = useCallback(() => {
+    setRefresh(refresh+1)
+  }, [refresh])
+
+  const handleApprove = useCallback(() => {
+    if (!usdcAddress) {
+      return
+    }
+    const AWE_ERC20Contract: any = {
+      address: usdcAddress,
+      abi: ERC20_ABI,
+    }
+    setApproveLoading(true)
+    const approvePromise = new Promise((resolve, reject) => {
+      writeContract({
+        ...AWE_ERC20Contract,
+        functionName: 'approve',
+        args: [worldData.launch_contract, parseUnits(maxAmountPerAddress, 6)]
+      }, {
+        onSuccess: async (txHash) => {
+          console.log("Transaction submitted successfully, txHash:", txHash);
+          try {
+            const receipt = await waitForTransactionReceipt(config, {
+              hash: txHash,
+            });
+            setApproveLoading(false)
+            setRefresh(refresh + 1)
+            setTimeout(() => {
+              handleRefresh()
+            }, 5000)
+            setAmountToApprove(maxAmountPerAddress)
+            resolve({
+              txHash: receipt.transactionHash,
+              blockNumber: receipt.blockNumber,
+            });
+          } catch (receiptError) {
+            setApproveLoading(false)
+            console.error("Failed to get transaction receipt:", receiptError);
+            reject(receiptError);
+          }
+        },
+        onError: (error) => {
+          console.error('err', error)
+          reject(error)
+          setApproveLoading(false)
+        }
+      })
+    })
+
+    toaster.promise(approvePromise, {
+      success: { title: 'Approve Success', description: '' },
+      error: { title: 'Approve Failed', description: 'Something wrong' },
+      loading: { title: 'Confirm wallet pending', description: 'Please wait' },
+    })
+  }, [address, amount, usdcAddress, refresh])
+
+  const handleContribute = useCallback(handleSubmit((data: any) => {
+    console.log(getValues('amount'))
+    if (!worldData.launch_contract) {
+      return
+    }
+    setContributeLoading(true)
+    const World_Fun_Contract: any = {
+      address: worldData.launch_contract,
+      abi: TradeClashABI,
+    }
+    const promise = new Promise((resolve, reject) => {
+      try {
+        writeContract({
+          ...World_Fun_Contract,
+          functionName: 'contribute',
+          args: [parseUnits(data.amount, 6)]
+        }, {
+          onSuccess: async (txHash: any) => {
+            console.log("Transaction submitted successfully, txHash:", txHash);
+            try {
+              const receipt = await waitForTransactionReceipt(config, {
+                hash: txHash,
+              });
+              console.log("Transaction receipt:", receipt);
+              setContributeLoading(false)
+              setRefresh(refresh + 1)
+              setTimeout(() => {
+                console.log('timeout refresh')
+                handleRefresh()
+              }, 5000)
+              resolve({
+                txHash: receipt.transactionHash,
+                blockNumber: receipt.blockNumber,
+              });
+            } catch (receiptError) {
+              setContributeLoading(false)
+              console.error("Failed to get transaction receipt:", receiptError);
+              reject(receiptError);
+            }
+          },
+          onError: (error: any) => {
+            console.error('err', error)
+            setContributeLoading(false)
+            reject(error)
+          }
+        })
+      } catch (err: any) {
+        console.error("Caught error:", err);
+        setContributeLoading(false)
+        toaster.create({
+          title: "Error",
+          description: err.message.includes('User rejected the') ? 'User rejected the request.' : 'Something went wrong, please try again.',
+          type: "error",
+        });
+      }
+    })
+    toaster.promise(promise, {
+      loading: {
+        title: "Transaction in Progress",
+        description: "Submitting transaction to the network...",
+      },
+      success: () => ({
+        title: "Transaction Confirmed",
+        description: ``,
+        isClosable: true,
+      }),
+      error: (err: any) => ({
+        title: "Transaction Failed",
+        description: err.message.includes('User rejected the') ? 'User rejected the request.' : 'Something went wrong, please try again.',
+        isClosable: true,
+      }),
+    });
+  }),[refresh, worldData.launch_contract])
+
+  const handleClaim = useCallback(() => {
+    if (!worldData.launch_contract) {
+      return
+    }
+    setClaimLoading(true)
+    const World_Fun_Contract: any = {
+      address: worldData.launch_contract,
+      abi: TradeClashABI,
+    }
+    const promise = new Promise((resolve, reject) => {
+      try {
+        writeContract({
+          ...World_Fun_Contract,
+          functionName: 'claim',
+          args: []
+        }, {
+          onSuccess: async (txHash: any) => {
+            console.log("Transaction submitted successfully, txHash:", txHash);
+            try {
+              const receipt = await waitForTransactionReceipt(config, {
+                hash: txHash,
+              });
+              console.log("Transaction receipt:", receipt);
+              setClaimLoading(false)
+              setRefresh(refresh + 1)
+              setTimeout(() => {
+                setRefresh(refresh + 1)
+              }, 5000)
+              resolve({
+                txHash: receipt.transactionHash,
+                blockNumber: receipt.blockNumber,
+              });
+            } catch (receiptError) {
+              setClaimLoading(false)
+              console.error("Failed to get transaction receipt:", receiptError);
+              reject(receiptError);
+            }
+          },
+          onError: (error: any) => {
+            console.error('err', error)
+            setClaimLoading(false)
+            reject(error)
+          }
+        })
+      } catch (err: any) {
+        console.error("Caught error:", err);
+        setClaimLoading(false)
+        toaster.create({
+          title: "Error",
+          description: err.message.includes('User rejected the') ? 'User rejected the request.' : 'Something went wrong, please try again.',
+          type: "error",
+        });
+      }
+    })
+    toaster.promise(promise, {
+      loading: {
+        title: "Transaction in Progress",
+        description: "Submitting transaction to the network...",
+      },
+      success: () => ({
+        title: "Transaction Confirmed",
+        description: ``,
+        isClosable: true,
+      }),
+      error: (err: any) => ({
+        title: "Transaction Failed",
+        description: err.message.includes('User rejected the') ? 'User rejected the request.' : 'Something went wrong, please try again.',
+        isClosable: true,
+      }),
+    });
+  }, [refresh, worldData.launch_contract])
+
+  const renderFundraiseSection = () => (
+    <Box width={{base:'100%',md:'446px'}}>
+      <Flex justifyContent="flex-end" display={{base:'none',md:'flex'}} height={{base:'auto',md: 'auto'}} position="relative" mt={{ base: 6, md: 0 }} >
+        <Image
+          className="shark-tank-image"
+          src="/tradeClash.jpg"
+          alt="Trade Clash"
+          maxW="100%"
+          w="100%"
+          maxH={'309px'}
+          borderRadius="10px"
+          transition="filter 0.3s ease"
+        />
+        <Box
+          className="enter-button"
+          position="absolute"
+          top="50%"
+          left="50%"
+          transform="translate(-50%, -50%)"
+          transition="opacity 0.3s ease"
+          cursor="pointer"
+          bg={{ base: "rgba(0, 0, 0, 0.7)", md: "rgba(0, 0, 0, 0.8)" }}
+          color="#8C8C8C"
+          px={{ base: 4, md: 6 }}
+          py={{ base: 2, md: 3 }}
+          borderRadius="md"
+          fontFamily="DMMOno"
+          fontSize={{ base: "md", md: "lg" }}
+          fontWeight={500}
+          minH={{ base: "44px", md: "auto" }}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          _hover={{
+            bg: "rgba(0, 0, 0, 0.9)"
+          }}
+          _active={{
+            bg: "rgba(0, 0, 0, 0.95)"
+          }}
+          onClick={() => {window.open('https://sim.tradeclash.xyz', '_blank')}}
+        >
+          Enter World
+        </Box>
+      </Flex>
+      {
+         canClaim &&
+          <Box
+            border="1px solid rgba(224, 224, 224, 0.2)"
+            fontWeight={'light'}
+            fontFamily={'DMMono'}
+            px={{ base: 3, md: 6 }}
+            py={{ base: 3, md: 8 }}
+            borderRadius={'10px'}
+            mt="30px"
+            bg="#111"
+          >
+            <a 
+              href={`https://aerodrome.finance/swap?from=0x1b4617734c43f6159f3a70b7e06d883647512778&to=${claimAddress}&chain0=8453&chain1=8453`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none', display: 'inline-block', width: '100%' }}
+            >
+              <Flex alignItems={'center'} justify="space-between" gap={{ base: 1, md: 0 }}>
+                <Box>
+                  <Heading
+                    display={'flex'}
+                    alignItems={'center'}
+                    gap={'4px'}
+                    as="h3"
+                    fontSize={{ base: "md", md: "xl" }}
+                    mb={1}
+                    fontWeight={'medium'}
+                    fontFamily={'DMMono'}
+                    color="#fff"
+                  >
+                    Swap for $SIM
+                    {/* <Image width={'34px'} h={'34px'} src="/logo_shark.svg" alt="token" /> */}
+                  </Heading>
+                  <Text
+                      fontFamily="DMMono"
+                      fontSize="md"
+                      color="#fff"
+                      bg="transparent"
+                      fontWeight={'light'}
+                    >
+                      Buy more $SIM through Aerodrome
+                  </Text>
+                </Box>
+                <Image width={'24px'} h={'24px'} src="/arrow_forward.svg" alt="token" />
+              </Flex>
+            </a>
+            
+          </Box>
+      }
+      <Box border="1px solid rgba(224, 224, 224, 0.2)" fontWeight={'light'} fontFamily={'DMMono'} p={{ base: 3, md: 6 }} borderRadius={'10px'} mt='30px'>
+        <Heading as="h3" fontSize={{ base: "md", md: "lg" }} mb={'32px'} fontWeight={'light'} fontFamily={'DMMono'}>
+          {
+            canClaim ? 'Launch Complete' : 'Fund This World'
+          }
+        </Heading>
+        <Flex justify="space-between" gap={{ base: 1, md: 0 }}>
+          <Text fontSize={{ base: "xs", md: "sm" }}>{numeral(totalRaised).format('0,0.00')} / {numeral(fundingGoal).format('0,0')} USDC</Text>
+          <Text fontSize={{ base: "xs", md: "sm" }}>{totalRaised ? numeral(Number(totalRaised) / Number(fundingGoal) * 100).format('0,0.00') : 0}% </Text>
+        </Flex>
+        <Progress.Root size="xl" variant="subtle" mt={2} mb={'32px'} value={totalRaised ? Number(totalRaised) / Number(fundingGoal) * 100 : 0}>
+          <Progress.Track>
+            <Progress.Range />
+          </Progress.Track>
+        </Progress.Root>
+        {onlyWhitelist && isConnected && <Flex mt={4} justify="space-between" gap={{ base: 2, md: 0 }} mb={'32px'}>
+          <Text fontSize={{ base: "xs", md: "sm" }}>Whitelist Status</Text>
+          <Status.Root size={{ base: "sm", md: "lg" }} colorPalette="green">
+            {isConnected && inWhiteList ? <Icon size="sm" color="green"><FaRegCheckCircle /></Icon> : <Icon size="sm" color="white"><PiWarningCircle/></Icon> }
+            {isConnected && inWhiteList ? <Text fontSize={{ base: "xs", md: "sm" }}>Approved</Text>: <Text fontSize={{ base: "xs", md: "sm" }}>Public</Text>}
+          </Status.Root>
+        </Flex>}
+        <form onSubmit={handleContribute}>
+          {!canClaim && <Box my={4} border="1px solid rgba(224, 224, 224, 0.2)" p={{ base: 3, md: 4 }} mb={'32px'} borderRadius={'10px'}>
+            <Flex justify="space-between" gap={{ base: 1, md: 0 }}>
+              <Text fontSize={{ base: "xs", md: "sm" }}>Commit USDC</Text>
+              <Text fontSize={{ base: "xs", md: "sm" }}><span style={{ color: '#666' }}>Balance:</span> {numeral(usdcBalance).format('0,0.00')}</Text>
+            </Flex>
+            <Flex justify="space-between">
+              <Group >
+                <Field.Root>
+                  <Controller
+                    name="amount"
+                    control={control}
+                    render={({ field }: any) => (
+                      <NumberInput.Root
+                        disabled={field.disabled}
+                        name={field.name}
+                        value={field.value}
+                        max={Number(maxAmountPerAddress) - Number(contributionsAmount) > Number(fundingGoal) - Number(totalRaised) ? Number(maxAmountPerAddress) - Number(contributionsAmount): Number(fundingGoal) - Number(totalRaised) }
+                        onValueChange={({ value }) => {
+                          if(Number(value) > Number(maxAmountPerAddress) - Number(contributionsAmount)){
+                            field.onChange(Number(maxAmountPerAddress) - Number(contributionsAmount))
+                            setAmount((Number(maxAmountPerAddress) - Number(contributionsAmount)).toString())
+                          }else {
+                            field.onChange(value)
+                            setAmount(value)
+                          }
+                        }}
+                      >
+                        <NumberInput.Input border={'none!important'} outlineWidth={0} pl={0} maxW={'100px'} fontSize={'18px'} placeholder='0' onBlur={field.onBlur} />
+                      </NumberInput.Root>
+                    )}
+                  />
+                </Field.Root>
+                <Button borderRadius={'10px!important'} variant="ghost" fontSize={'18px'} color="#666" 
+                  onClick={() => { 
+                    const amount = Number(usdcBalance) > (Number(maxAmountPerAddress) - Number(contributionsAmount)) ? (Number(maxAmountPerAddress) - Number(contributionsAmount)).toString(): usdcBalance
+                    if(Number(fundingGoal) - Number(totalRaised) < Number(amount)){
+                      setValue('amount', (Number(fundingGoal) - Number(totalRaised)).toString())
+                      setAmount((Number(fundingGoal) - Number(totalRaised)).toString())
+                      return;
+                    }
+                    setValue('amount', amount) 
+                    setAmount(amount) 
+                  }}>
+                  Max
+                </Button>
+              </Group>
+              <HStack>
+                <Image src="/assets/usdc.svg" alt="token" />
+                <Text fontSize={{ base: "xs", md: "sm" }}>USDC</Text>
+              </HStack>
+            </Flex>
+          </Box>}
+          {
+            canClaim && isConnected && Number(contributionsAmount) > 0 && 
+                <Button
+                  bg="rgba(55, 60, 62, 0.4)" color="#fff" size={{ base: "sm", md: "sm" }} w="full" fontSize={{ base: "xs", md: "sm" }}
+                  loading={claimLoading}
+                  onClick={handleClaim}
+                  disabled={!canClaim || hasClaimed}
+                >
+                  {hasClaimed ? 'Claimed' : 'Claim'}
+                </Button>
+              }
+          { hasClaimed || (canClaim && Number(contributionsAmount) === 0) ? '' : <>
+            <Flex justify="space-between" mt={4} gap={{ base: 1, md: 0 }}>
+              <Text fontSize={{ base: "xs", md: "sm" }}>Your Contribution</Text>
+              <Text fontSize={{ base: "xs", md: "sm" }}>{numeral(Number(contributionsAmount)).format('0,0.00')}/{numeral(Number(maxAmountPerAddress)).format('0,0.00')}</Text>
+            </Flex>
+            <Flex justify="space-between" gap={{ base: 1, md: 0 }} mt={1} mb={!remainingTime && !isTradable ? 0 : '32px'}>
+              <Text fontSize={{ base: "xs", md: "sm" }}>Estimated Allocation</Text>
+                <Text fontSize={{ base: "xs", md: "sm" }}>{numeral(Number(estimateAmount)).format('0,0.00')} {claimTokenSymbol.toUpperCase()}</Text>
+              </Flex>
+            </>
+          }
+          {!canClaim && 
+            <>{isConnected ? (
+              onlyWhitelist && !inWhiteList ? 
+              <Button bg="rgba(55, 60, 62, 0.4)" color="#fff" size={{ base: "sm", md: "sm" }} w="full" fontSize={{ base: "xs", md: "sm" }} className="approve-btn" disabled={true}>
+                Not Eligible
+              </Button>
+              :
+              Number(usdcBalance) === 0 || Number(amount) > Number(usdcBalance) ? 
+                <Button bg="rgba(55, 60, 62, 0.4)" color="#fff" size={{ base: "sm", md: "sm" }} w="full" fontSize={{ base: "xs", md: "sm" }} className="approve-btn" disabled={true}>
+                  Insufficient Balance
+                </Button>
+              :
+              Number(amountToApprove) < Number(amount) ?
+                <Button
+                  bg="rgba(55, 60, 62, 0.4)" color="#fff" size={{ base: "sm", md: "sm" }} w="full" fontSize={{ base: "xs", md: "sm" }}
+                  loading={approveLoading}
+                  loadingText="Approving"
+                  className="approve-btn"
+                  onClick={handleApprove}
+                  disabled={!isTradable || (onlyWhitelist && !inWhiteList)}
+                >
+                  Approve
+                </Button>
+                :
+                <Button
+                  bg="rgba(55, 60, 62, 0.4)" color="#fff" size={{ base: "sm", md: "sm" }} w="full" fontSize={{ base: "xs", md: "sm" }}
+                  loading={contributeLoading}
+                  type="submit"
+                  disabled={!amount || Number(amount) > Number(maxAmountPerAddress) || Number(amount) > Number(fundingGoal) - Number(totalRaised) || !isTradable || (onlyWhitelist && !inWhiteList)}
+                >
+                  {Number(amount) > Number(maxAmountPerAddress) || Number(amount) > Number(fundingGoal) - Number(totalRaised) ? 'Over max contribute' : 'Contribute'}
+                </Button>
+              ) :
+                <Button bg="rgba(55, 60, 62, 0.4)" color="#fff" size={{ base: "sm", md: "sm" }} w="full" fontSize={{ base: "xs", md: "sm" }}
+                  onClick={openConnectModal}
+                >
+                  Connect Wallet
+                </Button>
+            }</>
+          }
+        </form>
+      </Box>
+      <Box border="1px solid rgba(224, 224, 224, 0.2)" p={{ base: 3, md: 4 }} borderRadius={'10px'} mt={'30px'} fontWeight={'light'} fontFamily={'DMMono'}>
+        <Stack gap={{ base: '8px', md: '8px' }}>
+          {
+            canClaim ? tokenPoolInfo() : renderContributeInfo()
+          }
+          {!canClaim && <Flex justify="space-between" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+            <Text fontSize={{ base: "xs", md: "sm" }}>Time Remaining</Text>
+            <Text fontSize={{ base: "xs", md: "sm" }} color="#646E71">{remainingTime}</Text>
+          </Flex>}
+          {
+            canClaim ?
+            <Box></Box>:
+            <Flex justify="space-between" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+              <Text fontSize={{ base: "xs", md: "sm" }}>USDC Remaining</Text>
+              <Text fontSize={{ base: "xs", md: "sm" }} color="#646E71">{Number(fundingGoal) - Number(totalRaised) > 0 ? numeral(Number(fundingGoal) - Number(totalRaised)).format('0,0.00') : 0}</Text>
+            </Flex>
+          }
+        </Stack>
+      </Box>
+    </Box>
+  );
+
+  const renderContributeInfo = () => {
+    return (
+    <Grid display={'grid'} gridTemplateColumns="repeat(2, 1fr)" gap='8px'>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">Raised</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">${numeral(totalRaised).format('0,0')}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">Team</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">{worldData?.awe_for_team}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">Launch MC</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">{worldData?.launched_mc}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">Presale MC</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">{worldData?.presale_mc}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">LP</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">{worldData?.awe_for_lp}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">Max Buy</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">${numeral(maxAmountPerAddress).format('0,0')}</Text>
+      </Flex>
+    </Grid>)
+  }
+  const tokenPoolInfo = () => {
+    return (
+      <Grid display={'grid'} gridTemplateColumns="repeat(2, 1fr)" gap='8px'>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">FDV</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">${formatNumber(fdv,2)}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">Liquidity</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">${formatNumber(liquidity,1)}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">Holders</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">{holders > 0 ? formatNumber(holders, 0) : '--'}</Text>
+      </Flex>
+      <Flex flexDirection="column" border="1px solid rgba(224, 224, 224, 0.2)" borderRadius="8px" p={'20px 40px'} gap={{ base: 1, md: 0 }}>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center">24h Volume</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} textAlign="center" color="#646E71">${formatNumber(volume24h,2)}</Text>
+      </Flex>
+      
+    </Grid>
+    )
+  }
+  const copyContract = (address: string) => {
+    copyToClipboard(address)
+    toaster.success({
+      title: 'Copied to clipboard',
+    })
+  }
+  const [fdv, setFdv] = useState(0)
+  const [liquidity, setLiquidity] = useState(0)
+  const [holders, setHolders] = useState(0)
+  const [volume24h, setVolume24h] = useState(0)
+  // 
+  const getGeckoTerminalData = useCallback(async () => {
+    try {
+      const response = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/tokens/${claimAddress}`, {
+        headers: {
+          'Accept': 'application/json;version=20230302'
+        }
+      })
+      const data = await response.json()
+      if (data.data?.attributes?.fdv_usd) {
+        setFdv(data.data.attributes.fdv_usd)
+      }
+    } catch (error) {
+      console.error('Error fetching GeckoTerminal data:', error)
+    }
+  }, [claimAddress])
+  const getPoolData = useCallback(async () => {
+    try {
+      const response = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddress}?include=base_token,token_info,quote_token,dex`, {
+        headers: {
+          'Accept': 'application/json;version=20230302'
+        }
+      })
+      const data = await response.json()
+      setLiquidity(data.data.attributes.reserve_in_usd)
+      setVolume24h(data.data.attributes.volume_usd.h24)
+    } catch (error) {
+      console.error('Error fetching pool data:', error)
+    }
+  }, [poolAddress])
+  const getTokenData = useCallback(async () => {
+    try {
+      const response = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/tokens/${claimAddress}/info`, {
+        headers: {
+          'Accept': 'application/json;version=20230302'
+        }
+      })
+      const data = await response.json()
+      if (data.data?.attributes?.holders?.count) {
+        setHolders(data.data.attributes.holders.count)
+        console.log('Holders count:', data.data.attributes.holders.count)
+      } else {
+        console.log('No holders data found in response:', data)
+      }
+    } catch (error) {
+      console.error('Error fetching token data:', error)
+    }
+  }, [claimAddress])
+
+
+  useEffect(() => {
+    if(poolAddress){
+      getPoolData()
+    }
+  }, [poolAddress])
+  
+  useEffect(() => {
+    if(claimAddress){
+      getTokenData()
+      getGeckoTerminalData()
+    }
+  }, [claimAddress])
+
+  return (
+    <Box pb={{ base: 12, md: 0 }} >
+      <Header />
+      <Box display={{ base: 'none', md: 'block' }}>
+        <Sidebar />
+      </Box>
+      <Box as="main" ml={{ base: 0, md: '72px' }} px={{ base: 3, md: '60px' }} py={{ base: 5, md: 8 }} bg={bgColor} color={color} minH="calc(100vh - 60px)">
+        <Grid templateColumns={{ base: "repeat(1, 1fr)", md: 'repeat(3, 1fr)' }} gap={{ base: 4, md: 6 }}>
+          {
+            ((isMobile && mobileTab === 'info') || !isMobile) &&
+            <GridItem colSpan={{ base: 1, md: 2 }} minW={{base:'100%', md:'740px'}}>
+              <Flex
+                justifyContent={{ base: 'flex-start', md: 'space-between' }}
+                flexDirection={{ base: 'column', md: 'row' }}
+                gap={{ base: 4, md: 0 }}
+                alignItems={{ base: 'flex-start', md: 'center' }}
+              >
+                <Flex
+                  gap={{ base: 3, md: 4 }}
+                  flexDirection={{ base: 'row', md: 'row' }}
+                  alignItems={{ base: 'flex-start', md: 'center' }}
+                  width={{ base: '100%', md: 'auto' }}
+                >
+                  {/* {
+                    canClaim && (
+                      <Image
+                        width={{ base: '56px', md: '80px' }}
+                        height={{ base: '56px', md: '80px' }}
+                        src={worldInfo[id].logo}
+                        alt="Trade Clash"
+                      />
+                    )
+                  } */}
+                  <Box>
+                    <Heading
+                      as="h2"
+                      fontSize={{ base: "lg", md: "3xl" }}
+                      fontFamily={'BDO Grotesk'}
+                      lineHeight={{ base: "1.2", md: "1.3" }}
+                    >
+                     Trade Clash
+                    </Heading>
+                    {
+                      canClaim && (
+                        <Flex
+                          gap={{ base: 2, md: 3 }}
+                          alignItems={'center'}
+                          mt={2}
+                          flexWrap={{ base: 'wrap', md: 'nowrap' }}
+                        >
+                          <Box
+                            as="button"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            border="1px solid #646E71"
+                            borderRadius="6px"
+                            px={2}
+                            py={1}
+                            fontFamily="DMMono"
+                            fontSize="xs"
+                            color="#646E71"
+                            bg="transparent"
+                            transition="border 0.2s"
+                            cursor="pointer"
+                            minW={{ base: "120px", md: "165px" }}
+                            maxW={{ base: "180px", md: "320px" }}
+                            mb={{ base: 1, md: 0 }}
+                          >
+                            {claimAddress?abbrTxHash(claimAddress):'--'}
+                            <Image src="/copy.svg" alt="token" onClick={() => copyContract(claimAddress)} />
+                          </Box>
+                          <Box
+                            as="button"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            border="1px solid #646E71"
+                            borderRadius="6px"
+                            px={2}
+                            py={1}
+                            fontFamily="DMMono"
+                            fontSize="xs"
+                            color="#646E71"
+                            bg="transparent"
+                            transition="border 0.2s"
+                            cursor="pointer"
+                            mb={{ base: 1, md: 0 }}
+                          >
+                            {worldInfo[id].type}
+                          </Box>
+                          <Box
+                            width={{ base: '22px', md: '26px' }}
+                            height={{ base: '22px', md: '26px' }}
+                            border="1px solid #646E71"
+                            borderRadius="50%"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            mr={{ base: 0, md: 0 }}
+                            mb={{ base: 1, md: 0 }}
+                          >
+                            <Link href={worldInfo[id].x} target="_blank">
+                              <Image src="/assets/X.svg" alt='x' width="100%" height="100%" />
+                            </Link>
+                          </Box>
+                          {/* <Box
+                            border="1px solid #646E71"
+                            borderRadius="50%"
+                            width={{ base: '22px', md: '26px' }}
+                            height={{ base: '22px', md: '26px' }}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                          >
+                            <Link href={worldInfo[id].doc} target="_blank">
+                              <Image width="100%" height="100%" src="/assets/Gitbook.svg" alt='gitbook' />
+                            </Link>
+                          </Box> */}
+                        </Flex>
+                      )
+                    }
+                  </Box>
+                </Flex>
+                {
+                  canClaim && (
+                  <Flex
+                    gap={{ base: 4, md: 6 }}
+                    flexDirection={{ base: 'row', md: 'row' }}
+                    width={{ base: '100%', md: 'auto' }}
+                    justifyContent={{ base: 'space-between', md: 'flex-end' }}
+                  >
+                    <Box textAlign={'center'}>
+                      <Text fontSize={{ base: "xs", md: "sm" }} color="#646E71">FDV</Text>
+                      <Text fontSize={{ base: "xs", md: "sm" }} color="#80C838">${formatNumber(fdv,2)}</Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize={{ base: "xs", md: "sm" }} color="#646E71">Created On</Text>
+                      <Text fontSize={{ base: "xs", md: "sm" }} color="#80C838">{moment(Number(startTime)*1000).format('YYYY-MM-DD')}</Text>
+                    </Box>
+                  </Flex>
+                  )
+                }
+              </Flex>
+              {
+                canClaim &&
+                <Box width={'100%'} height={'470px'} mt={{base: 2, md: 10}}>{
+                  poolAddress ?
+                  <iframe height="100%" width="100%" id="geckoterminal-embed" title="GeckoTerminal Embed" src={`https://www.geckoterminal.com/base/pools/${poolAddress}?embed=1&info=0&swaps=0&grayscale=0&light_chart=0&chart_type=price&resolution=15m`} frameBorder="0" allow="clipboard-write" allowFullScreen></iframe>
+                  :
+                  <iframe height="100%" width="100%" id="geckoterminal-embed" title="GeckoTerminal Embed" src="https://www.geckoterminal.com/base/pools/0xcb7f520d18141e36956fe0b3a6bc3d4f11245521?embed=1&info=0&swaps=0&grayscale=0&light_chart=0&chart_type=price&resolution=15m" frameBorder="0" allow="clipboard-write" allowFullScreen></iframe>  
+                }
+                </Box>
+              }
+              <Box height={{base:'auto',md:'264px'}} mt={0}  mb={0}>
+                {
+                  canClaim &&
+                  <Heading as="h2" fontSize={{ base: "xl", md: "3xl" }} fontFamily={'DMMono'} lineHeight={{ base: "1.2", md: "1.3" }} mb={6}>
+                  World Overview
+                  </Heading>
+                }
+                {
+                  !canClaim &&
+                  <Text fontSize={{ base: "xs", md: "sm" }} color="#80C838" fontFamily={'DMMono'} mt={{ base: 1, md: 2 }} mb={{ base: 3, md: 4 }}>
+                  Launch Date: {startTime?moment(Number(startTime)*1000).format('YYYY-MM-DD HH:mm:ss'):'--'}
+                  </Text>
+                }
+                {
+                  isMobile && <Flex justifyContent="flex-end" height={{base:'auto',md:'309px'}} position="relative" my="4">
+                    <Image
+                      className="shark-tank-image"
+                      src="/tradeclash.jpg"
+                      alt="AI Shark Tank Scene"
+                      maxW="100%"
+                      w="100%"
+                      maxH={'309px'}
+                      borderRadius="md"
+                      transition="filter 0.3s ease"
+                    />
+                    <Box
+                      className="enter-button"
+                      position="absolute"
+                      top="50%"
+                      left="50%"
+                      transform="translate(-50%, -50%)"
+                      opacity={{ base: 1, md: 0 }}
+                      transition="opacity 0.3s ease"
+                      cursor="pointer"
+                      bg={{ base: "rgba(0, 0, 0, 0.7)", md: "rgba(0, 0, 0, 0.8)" }}
+                      color="#8C8C8C"
+                      px={{ base: 4, md: 6 }}
+                      py={{ base: 2, md: 3 }}
+                      borderRadius="md"
+                      fontFamily="DMMOno"
+                      fontSize={{ base: "md", md: "lg" }}
+                      fontWeight={500}
+                      minH={{ base: "44px", md: "auto" }}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      _hover={{
+                        bg: "rgba(0, 0, 0, 0.9)"
+                      }}
+                      _active={{
+                        bg: "rgba(0, 0, 0, 0.95)"
+                      }}
+                      onClick={() => {window.open('https://sim.tradeclash.xyz/', '_blank')}}
+                    >
+                      Enter World
+                    </Box>
+                  </Flex>
+                }
+                <Text fontSize={{ base: "xs", md: "md" }} fontWeight={'light'} fontFamily={'DMMono'} mt={{ base: 1, md: 2 }} mb={{ base: 3, md: 4 }} lineHeight={{ base: "1.4", md: "1.5" }}>
+                Trade Clash is a news-driven AI economy simulation. It offers a dynamic simulation of the global economy, where twelve AI-controlled Country Agents react to real time news events and users speculate on outcomes.
+                </Text>
+                
+              </Box>
+              {isMobile &&
+                (canClaim ? tokenPoolInfo():renderContributeInfo())
+              }
+              <Tabs.Root value={activeTab} onValueChange={(details) => setActiveTab(details.value)} variant="plain" mt='30px'>
+                <Tabs.List
+                  fontFamily="DMMono"
+                  rounded="l3"
+                  gap={{ base: 0, md: 2 }}
+                  display={{base:'inline-flex', md:'flex'}}
+                  width={{base:'auto',md:'100%'}}
+                  overflowX={{base:'auto',md:'inherit'}}
+                  overflowY={{base:'hidden', md:'inherit'}}
+                  borderRadius={'none'}
+                  css={{
+                    '&::-webkit-scrollbar': {
+                      height: '0px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: 'transparent',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: '#646E71',
+                      borderRadius: '0px',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: '#80C838',
+                    },
+                  }}
+                >
+                  <Tabs.Trigger flex={{base:'',md:'1'}} flexShrink={'0'} justifyContent={'space-between'} bg={activeTab === 'team' ? "" : "#373C3E66"} value="team" border={'1px solid #413e3e'} borderLeft={{base:'none',md:'1px solid #413e3e'}} borderRadius={{base:'0px',md:'8px'}} fontSize={{ base: "2xs", md: "sm" }} p={{ base: 3, md: 3 }} textAlign={{ base: "center", md: "left" }}>
+                    TEAM OVERVIEW <Text display={{base:'none',md:'block'}}>{activeTab === 'team' ? '-' : '+'}</Text>
+                  </Tabs.Trigger>
+                  <Tabs.Trigger flex={{base:'',md:'1'}} flexShrink={'0'} justifyContent={'space-between'} bg={activeTab === 'projects' ? "" : "#373C3E66"} value="projects" border={'1px solid #413e3e'} borderLeft={{base:'none',md:'1px solid #413e3e'}} borderRadius={{base:'0px',md:'8px'}} fontSize={{ base: "2xs", md: "sm" }} p={{ base: 3, md: 3 }} textAlign={{ base: "center", md: "left" }}>
+                    PROJECT DETAILS <Text display={{base:'none',md:'block'}}>{activeTab === 'projects' ? '-' : '+'}</Text>
+                  </Tabs.Trigger>
+                  <Tabs.Trigger flex={{base:'',md:'1'}} flexShrink={'0'} justifyContent={'space-between'} bg={activeTab === 'tokennomics' ? "" : "#373C3E66"} value="tokennomics" border={'1px solid #413e3e'} borderLeft={{base:'none',md:'1px solid #413e3e'}} borderRadius={{base:'0px',md:'8px'}} fontSize={{ base: "2xs", md: "sm" }} p={{ base: 3, md: 3 }} textAlign={{ base: "center", md: "left" }}>
+                    TOKENOMICS <Text display={{base:'none',md:'block'}}>{activeTab === 'tokennomics' ? '-' : '+'}</Text>
+                  </Tabs.Trigger>
+                  <Tabs.Trigger flex={{base:'',md:'1'}} flexShrink={'0'} justifyContent={'space-between'} bg={activeTab === 'schedule' ? "" : "#373C3E66"} value="schedule" border={'1px solid #413e3e'} borderLeft={{base:'none',md:'1px solid #413e3e'}} borderRadius={{base:'0px',md:'8px'}} fontSize={{ base: "2xs", md: "sm" }} p={{ base: 3, md: 3 }} textAlign={{ base: "center", md: "left" }}>
+                    VESTING SCHEDULE <Text display={{base:'none',md:'block'}}>{activeTab === 'schedule' ? '-' : '+'}</Text>
+                  </Tabs.Trigger>
+                </Tabs.List>
+                <Tabs.Content value="team" border={'1px solid #413e3e'} px={{ base: 2, md: 6 }} py={{ base: 3, md: 7 }} mt={3} borderRadius={'lg'}>
+                  <OurTeam team={team} />
+                </Tabs.Content>
+                <Tabs.Content value="projects" border={'1px solid #413e3e'} px={{ base: 2, md: 6 }} py={{ base: 3, md: 7 }} mt={3} borderRadius={'lg'}>
+                  <TradeOverview />
+                </Tabs.Content>
+                <Tabs.Content value="tokennomics" border={'1px solid #413e3e'} px={{ base: 2, md: 6 }} py={{ base: 3, md: 7 }} mt={3} borderRadius={'lg'}>
+                  <ChartOverview data={worldData?.tokenomics} />
+                </Tabs.Content>
+                <Tabs.Content value="schedule" border={'1px solid #413e3e'} px={{ base: 2, md: 6 }} py={{ base: 3, md: 7 }} mt={3} borderRadius={'lg'}>
+                  <ChartSchedule data={worldData} />
+                </Tabs.Content>
+              </Tabs.Root>
+            </GridItem>
+          }
+          {
+            ((isMobile && mobileTab === 'fundraise') || !isMobile) &&
+            <GridItem colSpan={1}>
+              {renderFundraiseSection()}
+            </GridItem>
+          }
+        </Grid>
+      </Box>
+      <Box display={{ base: 'block', md: 'none' }} position="fixed" left={0} bottom={0} width="100%" zIndex={1000} bg="#232323" overflow="hidden">
+        <Flex fontFamily={'BDO Grotesk'}>
+          <Button
+            height={'48px'}
+            borderRadius={0}
+            bg={mobileTab === 'info' ? '#4B5E2E' : 'transparent'}
+            color={mobileTab === 'info' ? '#FCFCFC' : '#fff'}
+            fontWeight={mobileTab === 'info' ? 400 : 400}
+            onClick={() => setMobileTab('info')}
+            flex={1}
+          >
+            Info
+          </Button>
+          <Button
+            height={'48px'}
+            borderRadius={0}
+            bg={mobileTab === 'fundraise' ? '#80C8385C' : 'transparent'}
+            color={mobileTab === 'fundraise' ? '#FCFCFC' : '#fff'}
+            fontWeight={mobileTab === 'fundraise' ? 400 : 400}
+            onClick={() => setMobileTab('fundraise')}
+            flex={1}
+          >
+            Fundraise
+          </Button>
+        </Flex>
+      </Box>
+    </Box>
+  );
+}
