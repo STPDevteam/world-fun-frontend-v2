@@ -831,7 +831,7 @@ export default function WorldPage() {
   // 
   const getGeckoTerminalData = useCallback(async () => {
     try {
-      const response = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/tokens/${claimAddress}`, {
+      const response = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/tokens/${claimAddress}?include_inactive_source=true`, {
         headers: {
           'Accept': 'application/json;version=20230302'
         }
@@ -854,6 +854,9 @@ export default function WorldPage() {
       const data = await response.json()
       setLiquidity(data.data.attributes.reserve_in_usd)
       setVolume24h(data.data.attributes.volume_usd.h24)
+      if (data.data?.attributes?.fdv_usd) {
+        setFdv(data.data.attributes.fdv_usd)
+      }
     } catch (error) {
       console.error('Error fetching pool data:', error)
     }
@@ -887,7 +890,7 @@ export default function WorldPage() {
   useEffect(() => {
     if(claimAddress){
       getTokenData()
-      getGeckoTerminalData()
+      // getGeckoTerminalData()
     }
   }, [claimAddress])
 

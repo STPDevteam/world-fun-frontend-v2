@@ -1,0 +1,88 @@
+.r_line1 {
+  width: 100%;
+  height: 1px;
+  background-color: rgba(255,255,255,0.4);
+}
+
+.c_line1, .c_line2 {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  width: 1px;
+  height: 72px;
+  background-color: rgba(255,255,255,0.4);
+}
+
+.c_line1 {
+  left: 36px;
+}
+
+.c_line2 {
+  right: 36px;
+}
+
+.dot1, .dot2, .dot3, .dot4, .dot5, .dot6 {
+  position: absolute;
+  z-index: 2;
+  width: 5px;
+  height: 5px;
+  background-color: #d9d9d9;
+  border-radius: 50%;
+}
+
+.dot1 {
+  top: 70px;
+  left: 34px;
+}
+
+.dot2 {
+  top: 70px;
+  right: 34px;
+}
+
+.dot3 {
+  top: -3px;
+  left: -3px;
+}
+
+.dot4 {
+  top: -3px;
+  right: -3px;
+}
+
+.dot5 {
+  bottom: -3px;
+  left: -3px;
+}
+
+.dot6 {
+  bottom: -3px;
+  right: -3px;
+}
+
+.line10 {
+  position: relative;
+  bottom: -28px;
+}
+
+@media screen and (max-width: 768px) {
+  .c_line1 {
+    left: 8px;
+  }
+  
+  .c_line2 {
+    right: 8px;
+  }
+
+  .dot1 {
+    left: 6px;
+  }
+  
+  .dot2 {
+    right: 6px;
+  }
+
+  .line10 {
+    display: none;
+  }
+}

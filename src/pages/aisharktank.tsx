@@ -652,6 +652,9 @@ export default function WorldPage() {
       const data = await response.json()
       setLiquidity(data.data.attributes.reserve_in_usd)
       setVolume24h(data.data.attributes.volume_usd.h24)
+      if (data.data?.attributes?.fdv_usd) {
+        setFdv(data.data.attributes.fdv_usd)
+      }
     } catch (error) {
       console.error('Error fetching pool data:', error)
     }
@@ -678,7 +681,7 @@ export default function WorldPage() {
   useEffect(() => {
     getTokenData()
     getPoolData()
-    getGeckoTerminalData()
+    // getGeckoTerminalData()
   }, [])
 
   return (

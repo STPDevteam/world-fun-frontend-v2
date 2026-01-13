@@ -15,29 +15,24 @@ interface OurTeamProps {
   team?: TeamMember[]
 }
 
-export default function OurTeam({ team: propTeam }: OurTeamProps) {
-  
-  const defaultTeam: TeamMember[] = [
-    {
-      name: '@Ellie Li',
-      role: 'Co-founder & CEO',
-      avatar: '/team1.jpg',
-      twitter: 'https://x.com/carrotcakesol',
-      desc: `- Serial entrepreneur with 2 exits; last startup acquired by Verve/PubNative at $50M ARR\n- Former core contributor to the Ethereum ecosystem; built an AI-powered Duolingo-style platform that onboarded 50K+ students into Web3\n- Head of Product & Operations at Roll ($10M Series A), launched 500+ social tokens for creators and celebrities, $1B+ in trading volume\n- Product leader with expertise across consumer AI, social platforms, and adtech — with products used by 10M+ users globally`,
-    },
-    {
-      name: '@Abhinav Vishwa',
-      role: 'Co-founder & CTO',
-      avatar: '/team2.jpg',
-      twitter: 'https://x.com/abhinavvishwa',
-      desc: `- Previously, CTO at Morphic, Worked on Generative Media research for seamless image/video editing in next-gen creative workflows.\n- Former Director of Engineering at Polygon, Led Polygon POS, FDV $15B chain. Staff Engineer, Tech Lead at Uber, and a16z CSX alum\n- Built contextual video ads at Media.net (acquired for ~$1B); scaled monetization for Forbes, Bloomberg, and major publishers`,
-    },
-  ]
+const defaultTeam: TeamMember[] = [
+  {
+    name: '@Ellie Li',
+    role: 'Co-founder & CEO',
+    avatar: '/team1.jpg',
+    twitter: 'https://x.com/carrotcakesol',
+    desc: `- Serial entrepreneur with 2 exits; last startup acquired by Verve/PubNative at $50M ARR\n- Former core contributor to the Ethereum ecosystem; built an AI-powered Duolingo-style platform that onboarded 50K+ students into Web3\n- Head of Product & Operations at Roll ($10M Series A), launched 500+ social tokens for creators and celebrities, $1B+ in trading volume\n- Product leader with expertise across consumer AI, social platforms, and adtech — with products used by 10M+ users globally`,
+  },
+  {
+    name: '@Abhinav Vishwa',
+    role: 'Co-founder & CTO',
+    avatar: '/team2.jpg',
+    twitter: 'https://x.com/abhinavvishwa',
+    desc: `- Previously, CTO at Morphic, Worked on Generative Media research for seamless image/video editing in next-gen creative workflows.\n- Former Director of Engineering at Polygon, Led Polygon POS, FDV $15B chain. Staff Engineer, Tech Lead at Uber, and a16z CSX alum\n- Built contextual video ads at Media.net (acquired for ~$1B); scaled monetization for Forbes, Bloomberg, and major publishers`,
+  },
+]
 
-  // 
-  const team = propTeam || defaultTeam
-
-  // 
+export default function OurTeam({ team = defaultTeam }: OurTeamProps) {
   const cardBg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.600')
 
@@ -46,6 +41,7 @@ export default function OurTeam({ team: propTeam }: OurTeamProps) {
   const descRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    if (!team) return;
     team.forEach((_: TeamMember, idx: number) => {
       const el = descRefs.current[idx];
       if (el) {
@@ -79,7 +75,7 @@ export default function OurTeam({ team: propTeam }: OurTeamProps) {
         gap={{ base: 4, md: 6 }}
         align={{ base: 'center', md: 'stretch' }}
       >
-        {team.map((member: TeamMember, idx: number) => (
+        {team && team.map((member: TeamMember, idx: number) => (
           <Box
             key={idx}
             borderRadius="lg"

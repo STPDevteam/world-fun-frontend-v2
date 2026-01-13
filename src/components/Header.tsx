@@ -14,7 +14,7 @@ import LaunchWorld from '@/components/LaunchWorld';
 import { useAccount } from 'wagmi';
 import { ConnectButton, useConnectModal, useAccountModal } from '@rainbow-me/rainbowkit';
 
-export function Header() {
+export function Header({showSidebar = true}: {showSidebar?: boolean}) {
   const bgColor = useColorModeValue('white', 'black');
   const color = useColorModeValue('black', '#E0E0E0');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -25,6 +25,8 @@ export function Header() {
   const { openConnectModal } = useConnectModal();
 
   const menuItems = [
+    { label: 'ALPHA', href: 'https://alpha.world.fun/' },
+    { label: 'X402 MARKET', href: 'https://x402.world.fun/' },
     { label: 'DISCOVER WORLDS', href: '/discover' },
     { label: 'HOW IT WORKS', href: '/about' },
     { label: 'LAUNCH NEW WORLD', href: '' },
@@ -54,7 +56,7 @@ export function Header() {
 
   return (
     <Box 
-      ml={{ base: 0, md: "72px" }} 
+      ml={{ base: 0, md: showSidebar ? "72px" : 0 }} 
       as="header" 
       bg={bgColor} 
       p={4} 
@@ -95,7 +97,7 @@ export function Header() {
             );
 
             return item.href ? (
-              <Link href={item.href} key={item.label}>
+              <Link href={item.href} key={item.label} target={item.href.includes('https') ? '_blank' : '_self'}>
                 {content}
               </Link>
             ) : (

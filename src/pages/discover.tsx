@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { Fragment, useEffect } from 'react';
 import Link from 'next/link';
 import { Box, Heading, Text, Switch, Tabs, Stack, Skeleton, Separator, Clipboard, IconButton, VStack, Image, Flex, Button, Progress, Status, Icon, HStack, SkeletonCircle } from '@chakra-ui/react';
 import { Header } from '@/components/Header';
@@ -9,6 +9,11 @@ import { useState } from 'react';
 import { abbrTxHash, formatNumber } from '@/utils';
 import { get } from '@/utils/request';
 import { API_URL } from '@/constants'
+
+const poolAddress={
+  'TRADECLASH': '0xaD6198206DeC2a63B55ec30ae8a358DE860b427D',
+  'SHARKTANK': '0x05b1d072fff9e8f9b3ac55cf7367bb1526aa0e0a',
+}
 
 export default function Worlds() {
   const [isLoading, setIsLoading] = useState(true);
@@ -40,9 +45,9 @@ export default function Worlds() {
       setFilterWorlds(worlds)
     }
   }
-  const getGeckoTerminalData = async (contractAddress: string) => {
+  const getGeckoTerminalData = async (worldSymbol: string) => {
     try {
-      const response = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/tokens/${contractAddress}`, {
+      const response = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/pools/${poolAddress[worldSymbol as keyof typeof poolAddress]}`, {
         headers: {
           'Accept': 'application/json;version=20230302'
         }
@@ -97,7 +102,7 @@ export default function Worlds() {
       const fdvPromises: Promise<any>[] = newWorlds.map(async (world: any) => {
         if (world.tokenized && world.token_address) {
           try {
-            const fdv = await getGeckoTerminalData(world.token_address);
+            const fdv = await getGeckoTerminalData(world.symbol);
             return { ...world, fdv, fdvShow: true };
           } catch (error) {
             console.error('Error fetching FDV for', world.symbol, error);
@@ -226,12 +231,12 @@ function WorldCard({ world }: { world: any }) {
           <Text fontWeight="bold" fontSize="sm" color="gray.300">Categories</Text>
           {
             world?.categories?.split(',').map((item: string, index: number) => (
-              <>
+              <Fragment key={index}>
                 {
                   index != 0 && <Text as="span" color="#646E71" fontWeight="normal" key={index}>,</Text>
                 }
                 <Text as="span" color="#646E71" _hover={{ textDecoration: 'underline' }} fontWeight="normal" key={index}>{item}</Text>
-              </>
+              </Fragment>
             ))
           }
         </Box>
